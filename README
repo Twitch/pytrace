@@ -1,0 +1,17 @@
+/*********************************\
+           pytrace.py
+
+	This will, eventually, read
+	a file containing IP addresses
+	and (potentially) another ID
+	field and perform a traceroute
+	to each of the addresses, and
+	record the hops and latency.
+
+     Written by Twitch(Ben) 
+\*********************************/
+
+2010.08.03
+	Borrowing some in-py traceroute logic from http://github.com/leonidg.
+	Currently performs very little, just setting a starting point.
+
