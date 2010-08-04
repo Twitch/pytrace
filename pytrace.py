@@ -1,64 +1,80 @@
 #!/usr/bin/env python
 
 """
-   Attempting to mimic traceroute via Python basic sockets.
+	Attempting to mimic traceroute via Python basic sockets.
 	2010.08.02 ( Ben )
+
 """
+import socket, re, sys, time, select
 
-import socket, re, sys, threading as th
+if len(sys.argv) < 2:
+	print "Please specify a file containing the addresses to trace."
+	print "ex: %s /path/to/myfile.txt" % (sys.argv[0])
+	exit(2)
+elif len(sys.argv) > 2:
+	print "%s accepts only one input parameter. Ignoring trailing parameters.\n\n"
 
-dst = sys.argv[1]
+fileloc = sys.argv[1]
+infile = open(fileloc, 'rb')
+sport = 33435
+ttl, maxhops = (1, 30)
+udp, icmp = (socket.getprotobyname("udp"), socket.getprotobyname("icmp"))
+
+def senddgram(addr, port, ttl):
+	ssock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, udp)
+	ssock.setsockopt(socket.SOL_IP, socket.IP_TTL, ttl)
+	ssock.sendto("", (addr, port))
+	dgSent = time.time()
+	""" ??? """
+	ssock.close()
+	return dgSent
 
 
+def rcv_icmp(port, timeout=2):
+	_tremain = timeout
+	while True:
+		_begin = time.time()
+		rsock = socket.socket(socket.AF_INET, socket.SOCK_RAW, icmp)
+		rsock.bind(("", port))
+		_ready = select.select(rsock, [], [], _tremain)
+		_topening = (time.time() - begin)
+		if _ready[0] == []:
+			return
+		_trecvd = time.time()
+		rpayload, addr = rsock.recvfrom(1024)
+		_tremain = _tremain - _topening
+		if _tremain <= 0:
+			return
+	delay = _trecvd - dgSent
+	print "%d\t%s\t%dms" % (ttl, addr, delay)
+	return addr
 
-def main(dest):
+def main(dest, port):
+	global ttl
 	if re.search("\b(?:\d{1,3}\.){3}\d{1,3}\b", dest) == None:
-		print "Attempting to resolve %s..." % (dest)
 		try:
 			dst_addr = socket.gethostbyname(dest)
 		except socket.error:
 			print "Error resolving %s. Please try again with IP address." % (dest)
 			exit(2)
-		print "Resolved to %s" % (dst_addr)
 	else:
 		dst_addr = dest
 		
-	udp, icmp = (socket.getprotobyname("udp"), socket.getprotobyname("icmp"))
-	ttl, port, maxhops = (1, 33444, 30)
 
-	while True:
-		rsock = socket.socket(socket.AF_INET, socket.SOCK_RAW, icmp)
-		ssock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, udp)
-		ssock.setsockopt(socket.SOL_IP, socket.IP_TTL, ttl)
+	curraddr = None
+	currhost = None
+	try:
+		senddgram(dest, port, ttl)
+		curraddr = rcv_icmp(port)
+	except socket.error:
+		return
 
-		rsock.bind(("", port))
-		ssock.sendto("", (dest, port))
-		
-		curraddr = None
-		currname = None
-		try:
-			_, curraddr = rsock.recvfrom(512)
-			curraddr = curraddr[0]
-			try:
-				currname = socket.gethostbyaddr(curraddr)[0]
-			except socket.error:
-				currname = curraddr
-
-		except socket.error:
-			pass
-		finally:
-			ssock.close()
-			rsock.close()
-
-		if curraddr is not None:
-			currhost = "%s (%s)" % (currname, curraddr)
-		else:
-			currhost = "*"
-		print "%d\t%s" % (ttl, currhost)
-
-		ttl += 1
-		if curraddr == dest or ttl > maxhops:
-			break
+	ttl += 1
+	if curraddr == dest or ttl > maxhops:
+		print "%s - %d hops away" % (curaddr, ttl)
 
 if __name__ == "__main__":
-	main(dst)
+	#main(dst)
+	for line in infile:
+		main(line.split(" ")[0], sport)
+		sport += 1
