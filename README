@@ -15,3 +15,10 @@
 	Borrowing some in-py traceroute logic from http://github.com/leonidg.
 	Currently performs very little, just setting a starting point.
 
+2010.08.10
+	I have sodding well given up on 'borrowing' any other code for this.
+	My own personal brand of horrible programming and unique bad practices are much easier
+	to troubleshoot than trying to merge functions from disparate authors. Especially the old
+	traceroute from '97. Egads. What _was_ I thinking?!
+
+	We now accept a single addr from cliarg and successfully trace it. Working on threading this process now.
