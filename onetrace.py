@@ -5,7 +5,7 @@
 	2010.08.02 ( Ben )
 
 """
-import socket, re, sys, time, select, threading as th, struct
+import socket, re, sys, time, select, threading as th
 
 if len(sys.argv) < 2:
    print "Please specify a file containing the addresses to trace."
@@ -17,7 +17,7 @@ elif len(sys.argv) > 2:
 
 """ Defines """
 max_hops = 30
-timeout = 3
+timeout = 5
 target = sys.argv[1]
 s_port = 33375
 ttl = 0
@@ -47,11 +47,17 @@ def recv_icmp(port):
 			except socket.error:
 				pass
 			if reply:
-				received = time.time()
-				return reply, received, src
-			wait = (begin + timeout) - time.time()
-			if wait < 0:
-				return None
+				if ord(reply[20]) == 8 or ord(reply[20]) == 0: # ECHO packets, none of our business.
+					pass
+				elif ord(reply[20]) == 11 or ord(reply[20]) == 3: # TTL_Exceeded or DST_Unreachable
+					received = time.time()
+					return reply, received, src
+				else:
+					print "\t\t Unexpected ICMP header type \n%s" % reply
+					exit(2)
+		wait = (begin + timeout) - time.time()
+		if wait < 0:
+			return None, None, None
 
 def clsocks():
 	icmp_sock.close()
@@ -63,11 +69,11 @@ def execute(port, target, ttl):
 	t_sent = send_probe(target, port, ttl)
 	t_recv = recv_icmp(port)
 	clsocks()
-	elapsed = (t_recv[1] - t_sent) * 1000.0
-	print "%d\t%s\t%0.3f ms" % (ttl, t_recv[2][0], elapsed) 
-	print type(t_recv[0][0])
-	print ord(t_recv[0][3])
-	print t_recv[0][0]
+	if t_recv == None:
+		print "%d\t*no reply*\t***" % (ttl)
+	else:
+		elapsed = (t_recv[1] - t_sent) * 1000.0
+		print "%d\t%s\t%0.3f ms" % (ttl, t_recv[2][0], elapsed) 
 	if ttl > max_hops:
 		print "Max hops (30) reached."
 		exit(2)
@@ -76,14 +82,3 @@ def execute(port, target, ttl):
 
 
 execute(s_port, target, ttl)
-
-"""
-print t_sent
-print t_recv[0][20:28]
-print t_recv[1]
-print "\n"
-elapse = (t_recv[1] - t_sent) * 1000.0
-print "probe took %0.3f ms" % elapse 
-print t_recv[2]
-"""
-
