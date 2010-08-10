@@ -30,6 +30,8 @@ class traceroute():
 		self.port = sport
 		self.timeout = 2
 		self.ttl = 0
+		self.max_noreply = 5
+		self.noreply = 0
 	
 	def send_probe(self):
 		#Open UDP socket and send probe packet. ret False on socket error.
@@ -84,6 +86,7 @@ class traceroute():
 		t_sent = self.send_probe()
 		t_recv = self.recv_icmp()
 		if t_recv == None:
+			self.noreply += 1
 			""" Timed out """
 			print "%d\t*no reply*\t***" % (self.ttl)
 		else:
@@ -91,6 +94,10 @@ class traceroute():
 			elapsed = (self.received - self.sent) * 1000.0
 			self.lasthost = {"hop" : self.ttl, "addr" : self.src[0], "ping" : elapsed, "dest" : self.target}
 			print "%d\t%s\t%0.3f ms\t%d" % (self.ttl, self.src[0], elapsed, self.itype) 
+		if self.noreply >= self.max_noreply:
+			print "\tMaximum number of orphaned probes send. Terminating."
+			targets.append(self.lasthost)
+			return None
 		if self.ttl >= self.max_hops:
 			print "Max hops (%d) reached." % self.max_hops
 			targets.append(self.lasthost)

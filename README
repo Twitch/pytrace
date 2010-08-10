@@ -22,3 +22,7 @@
 	traceroute from '97. Egads. What _was_ I thinking?!
 
 	We now accept a single addr from cliarg and successfully trace it. Working on threading this process now.
+
+	###
+
+	Hah! It works. Handles exceptions, timeouts, and checks to validate received packets. It can even die atersending N probes with no response (orphaned probes). It's slow as the devil, though, as it is still single threaded. Threadpools come later, if at all.
