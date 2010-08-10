@@ -65,6 +65,9 @@ def execute(port, target, ttl):
 	clsocks()
 	elapsed = (t_recv[1] - t_sent) * 1000.0
 	print "%d\t%s\t%0.3f ms" % (ttl, t_recv[2][0], elapsed) 
+	print type(t_recv[0][0])
+	print ord(t_recv[0][3])
+	print t_recv[0][0]
 	if ttl > max_hops:
 		print "Max hops (30) reached."
 		exit(2)
