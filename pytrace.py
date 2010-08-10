@@ -91,6 +91,7 @@ class traceroute():
 			print "%d\t*no reply*\t***" % (self.ttl)
 		else:
 			""" Response received, set new lasthop in case we time out later """
+			self.noreply = 0
 			elapsed = (self.received - self.sent) * 1000.0
 			self.lasthost = {"hop" : self.ttl, "addr" : self.src[0], "ping" : elapsed, "dest" : self.target}
 			print "%d\t%s\t%0.3f ms\t%d" % (self.ttl, self.src[0], elapsed, self.itype) 
