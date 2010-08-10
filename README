@@ -26,3 +26,12 @@
 	###
 
 	Hah! It works. Handles exceptions, timeouts, and checks to validate received packets. It can even die atersending N probes with no response (orphaned probes). It's slow as the devil, though, as it is still single threaded. Threadpools come later, if at all.
+
+Usage:
+sudo ./pytrace <filename>
+
+Sample infile:
+
+10.195.27.40 98001
+74.125.53.104 98123
+98.137.149.56 98321
