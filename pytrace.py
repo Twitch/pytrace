@@ -6,7 +6,7 @@
 	2010.08.10 ( Ben ) -- Last Update
 
 """
-import socket, sys, time, select, threading as th, binascii
+import socket, sys, time, select, binascii
 
 # Simple input validation
 if len(sys.argv) < 2:
@@ -15,7 +15,6 @@ if len(sys.argv) < 2:
    exit(2)
 elif len(sys.argv) > 2:
    print "%s accepts only one input parameter. Ignoring trailing parameters.\n\n"
-
 
 """ Defines """
 s_port = 33375
@@ -74,7 +73,7 @@ class traceroute():
 							return True
 						else:
 							# Other ICMP types. Do whatever. Exit for now to debug.
-							print "\t\t Unexpected ICMP header type \n%s" % reply
+							print "\tUnexpected ICMP type\n%s from %s for tracing %s" % (reply, self.src, self.target)
 							exit(2)
 			wait = (begin + self.timeout) - time.time()
 			if wait < 0: # Timeout expired.
@@ -83,7 +82,7 @@ class traceroute():
 
 	def execute(self):
 		self.ttl += 1
-		t_sent = self.send_probe()
+		self.send_probe()
 		t_recv = self.recv_icmp()
 		if t_recv == None:
 			self.noreply += 1
@@ -95,6 +94,7 @@ class traceroute():
 			elapsed = (self.received - self.sent) * 1000.0
 			self.lasthost = {"hop" : self.ttl, "addr" : self.src[0], "ping" : elapsed, "dest" : self.target}
 			print "%d\t%s\t%0.3f ms\t%d" % (self.ttl, self.src[0], elapsed, self.itype) 
+		
 		if self.noreply >= self.max_noreply:
 			print "\tMaximum number of orphaned probes sent. Terminating."
 			targets.append(self.lasthost)
@@ -104,10 +104,11 @@ class traceroute():
 			targets.append(self.lasthost)
 			return None
 		if self.target != self.src:
-			# Arrived at destination. 
+			# Have no arrived at destination. 
 			self.execute()
 		else:
 			targets.append(self.lasthost)
+			return None
 	
 	def run(self):
 		self.execute()
