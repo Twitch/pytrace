@@ -2,11 +2,13 @@
 
 """
 	Attempting to mimic traceroute via Python basic sockets.
-	2010.08.02 ( Ben )
+	2010.08.02 ( Ben ) -- Began
+	2010.08.10 ( Ben ) -- Last Update
 
 """
-import socket, re, sys, time, select, threading as th
+import socket, sys, time, select, threading as th, binascii
 
+# Simple input validation
 if len(sys.argv) < 2:
    print "Please specify a file containing the addresses to trace."
    print "ex: %s /path/to/myfile.txt" % (sys.argv[0])
@@ -20,17 +22,17 @@ s_port = 33375
 host = sys.argv[1]
 targets = []
 
-#class traceroute(th.Thread):
 class traceroute():
 	def __init__(self, host, sport):
-		self.max_hops = 10
+		#Set internal class variables.
+		self.max_hops = 30
 		self.target = host
 		self.port = sport
 		self.timeout = 2
 		self.ttl = 0
-		#th.Thread.__init__ (self)
 	
 	def send_probe(self):
+		#Open UDP socket and send probe packet. ret False on socket error.
 		self.udp_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, 17)
 		self.udp_sock.setsockopt(socket.SOL_IP, socket.IP_TTL, self.ttl)
 		try:
@@ -41,6 +43,7 @@ class traceroute():
 		self.udp_sock.close()
 
 	def recv_icmp(self):
+		#Open socket to receive ICMP errors.
 		self.icmp_sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, 1)
 		self.icmp_sock.bind(("", self.port))
 		begin = time.time()
@@ -52,18 +55,26 @@ class traceroute():
 					self.reply, self.src = self.icmp_sock.recvfrom(1024)
 				except socket.error:
 					pass
-				if self.reply:
-					if ord(self.reply[20]) == 8 or ord(self.reply[20]) == 0: # ECHO packets, none of our business.
+				if self.reply: # Data received.
+					r_port = int(str(binascii.hexlify(self.reply[50:52])), 16) # Dport from returned UDP packet.
+					if r_port != self.port:
+						# Make sure this ICMP is for our probe.
 						pass
-					elif ord(self.reply[20]) == 11 or ord(self.reply[20]) == 3: # TTL_Exceeded or DST_Unreachable
-						self.received = time.time()
-						self.udp_sock.close()
-						return True
 					else:
-						print "\t\t Unexpected ICMP header type \n%s" % reply
-						exit(2)
+						if ord(self.reply[20]) == 8 or ord(self.reply[20]) == 0:
+							# ECHO packets, none of our business.
+							pass
+						elif ord(self.reply[20]) == 11 or ord(self.reply[20]) == 3:
+							# TTL_Exceeded or DST_Unreachable
+							self.received = time.time()
+							self.udp_sock.close()
+							return True
+						else:
+							# Other ICMP types. Do whatever. Exit for now to debug.
+							print "\t\t Unexpected ICMP header type \n%s" % reply
+							exit(2)
 			wait = (begin + self.timeout) - time.time()
-			if wait < 0:
+			if wait < 0: # Timeout expired.
 				self.udp_sock.close()
 				return None
 
@@ -72,24 +83,43 @@ class traceroute():
 		t_sent = self.send_probe()
 		t_recv = self.recv_icmp()
 		if t_recv == None:
+			""" Timed out """
 			print "%d\t*no reply*\t***" % (self.ttl)
 		else:
+			""" Response received, set new lasthop in case we time out later """
 			elapsed = (self.received - self.sent) * 1000.0
-			self.lasthost = {"hop" : self.ttl, "addr" : self.src, "ping" : elapsed}
+			self.lasthost = {"hop" : self.ttl, "addr" : self.src[0], "ping" : elapsed, "dest" : self.target}
 			print "%d\t%s\t%0.3f ms" % (self.ttl, self.src[0], elapsed) 
 		if self.ttl >= self.max_hops:
 			print "Max hops (%d) reached." % self.max_hops
 			targets.append(self.lasthost)
-			exit(2)
+			return None
 		if self.target != self.src:
+			# Arrived at destination. 
 			self.execute()
 		else:
-			hosts.append(self.lasthost)
+			targets.append(self.lasthost)
 	
 	def run(self):
 		self.execute()
 	
 
-#traceroute(host, s_port).start()
 
-narf = traceroute(host, s_port).run()
+try:
+	f = open(sys.argv[1])
+	for l in f:
+		host = l.split(" ")[0]
+		narf = traceroute(host, s_port).run()
+		s_port = s_port + 1
+
+	print "##########################"
+	print "##\t Targets \t##"
+	print "##########################"
+	print "\tTarget\t\t|\tHops\t|\tLast Hop\t|\tDelay"
+	for t in targets:
+		print "\t%s\t|\t%d\t|\t%s\t|\t%0.3f ms" % (t["dest"], t["hop"], t["addr"], t["ping"])
+
+except KeyboardInterrupt:
+	print "\nSIGINT received. Terminating... with extreme prejudice."
+	print targets
+	exit(2)
