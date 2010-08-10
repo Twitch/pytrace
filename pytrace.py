@@ -61,11 +61,12 @@ class traceroute():
 						# Make sure this ICMP is for our probe.
 						pass
 					else:
-						if ord(self.reply[20]) == 8 or ord(self.reply[20]) == 0:
-							# ECHO packets, none of our business.
+						self.itype = ord(self.reply[20])
+						if self.itype == 8 or self.itype == 0 or self.itype == 3:
+							# ECHO or unreachable packets, not interested.
 							pass
-						elif ord(self.reply[20]) == 11 or ord(self.reply[20]) == 3:
-							# TTL_Exceeded or DST_Unreachable
+						elif self.itype == 11:
+							# TTL_Exceeded
 							self.received = time.time()
 							self.udp_sock.close()
 							return True
@@ -89,7 +90,7 @@ class traceroute():
 			""" Response received, set new lasthop in case we time out later """
 			elapsed = (self.received - self.sent) * 1000.0
 			self.lasthost = {"hop" : self.ttl, "addr" : self.src[0], "ping" : elapsed, "dest" : self.target}
-			print "%d\t%s\t%0.3f ms" % (self.ttl, self.src[0], elapsed) 
+			print "%d\t%s\t%0.3f ms\t%d" % (self.ttl, self.src[0], elapsed, self.itype) 
 		if self.ttl >= self.max_hops:
 			print "Max hops (%d) reached." % self.max_hops
 			targets.append(self.lasthost)
