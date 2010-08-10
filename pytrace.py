@@ -96,7 +96,7 @@ class traceroute():
 			self.lasthost = {"hop" : self.ttl, "addr" : self.src[0], "ping" : elapsed, "dest" : self.target}
 			print "%d\t%s\t%0.3f ms\t%d" % (self.ttl, self.src[0], elapsed, self.itype) 
 		if self.noreply >= self.max_noreply:
-			print "\tMaximum number of orphaned probes send. Terminating."
+			print "\tMaximum number of orphaned probes sent. Terminating."
 			targets.append(self.lasthost)
 			return None
 		if self.ttl >= self.max_hops:
