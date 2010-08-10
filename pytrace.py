@@ -49,6 +49,7 @@ def rcv_icmp(port, timeout=2):
 	print "%d\t%s\t%dms" % (ttl, addr, delay)
 	return addr
 
+
 def main(dest, port):
 	global ttl
 	if re.search("\b(?:\d{1,3}\.){3}\d{1,3}\b", dest) == None:
