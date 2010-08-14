@@ -6,7 +6,7 @@
 	2010.08.10 ( Ben ) -- Last Update
 
 """
-import socket, sys, time, select, binascii
+import socket, sys, time, select, binascii, re
 
 # Simple input validation
 if len(sys.argv) < 2:
@@ -18,19 +18,37 @@ elif len(sys.argv) > 2:
 
 """ Defines """
 s_port = 33375
-host = sys.argv[1]
 targets = []
 
 class traceroute():
 	def __init__(self, host, sport):
 		#Set internal class variables.
 		self.max_hops = 30
-		self.target = host
+		self.inhost = host
 		self.port = sport
 		self.timeout = 2
 		self.ttl = 0
 		self.max_noreply = 5
 		self.noreply = 0
+		if re.search("(?:\d{1,3}\.){3}\d{1,3}", self.inhost) == None:
+				self.target = self.dns(self.inhost)
+		else:
+			self.target = self.inhost
+	
+	def dns(self, tuna):
+		if re.search("(?:\d{1,3}\.){3}\d{1,3}", tuna) == None:
+			try:
+				return socket.gethostbyname(tuna)
+			except:
+				print "Error resolving %s Please check input file and try again." % tuna
+				exit(2)
+		else:
+			try:
+				addr = socket.getfqdn(tuna)
+				return addr
+			except:
+				addr = "***"
+				return addr
 	
 	def send_probe(self):
 		#Open UDP socket and send probe packet. ret False on socket error.
@@ -93,7 +111,7 @@ class traceroute():
 			self.noreply = 0
 			elapsed = (self.received - self.sent) * 1000.0
 			self.lasthost = {"hop" : self.ttl, "addr" : self.src[0], "ping" : elapsed, "dest" : self.target}
-			print "%d\t%s\t%0.3f ms\t%d" % (self.ttl, self.src[0], elapsed, self.itype) 
+			print "%d\t%s (%s)\t%0.3f ms\t%d" % (self.ttl, self.src[0], self.dns(self.src[0]), elapsed, self.itype) 
 		
 		if self.noreply >= self.max_noreply:
 			print "\tMaximum number of orphaned probes sent. Terminating."
